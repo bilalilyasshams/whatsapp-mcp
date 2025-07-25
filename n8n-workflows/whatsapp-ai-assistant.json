@@ -1,0 +1,151 @@
+{
+  "name": "WhatsApp AI-Powered Chat Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp-ai-webhook",
+        "options": {}
+      },
+      "id": "webhook-ai-id",
+      "name": "WhatsApp Message Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract and validate message\nconst messageData = items[0].json;\nconst message = messageData.content || '';\nconst chatJid = messageData.chat_jid;\nconst sender = messageData.sender;\nconst isFromMe = messageData.is_from_me;\n\n// Don't process our own messages\nif (isFromMe) {\n  return [];\n}\n\n// Get recent chat history for context\nreturn [{\n  json: {\n    chat_jid: chatJid,\n    message: message,\n    sender: sender,\n    needs_context: true\n  }\n}];"
+      },
+      "id": "validate-message-id",
+      "name": "Validate Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://YOUR_DROPLET_IP:8000/whatsapp/messages",
+        "qs": {
+          "chat_jid": "={{ $json.chat_jid }}",
+          "limit": "10",
+          "include_context": "true"
+        }
+      },
+      "id": "get-context-id",
+      "name": "Get Chat Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a helpful WhatsApp assistant. Respond naturally and helpfully to user messages. Keep responses concise but informative. Use the chat context to provide relevant responses."
+            },
+            {
+              "role": "user", 
+              "content": "Recent chat context: {{ $json.data }}\n\nLatest message: {{ $('Validate Message').first().json.message }}\n\nPlease respond to the latest message considering the context."
+            }
+          ]
+        }
+      },
+      "id": "ai-response-id",
+      "name": "Generate AI Response",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract AI response and prepare for sending\nconst aiResponse = items[0].json.choices[0].message.content;\nconst chatJid = $('Validate Message').first().json.chat_jid;\n\nreturn [{\n  json: {\n    chat_jid: chatJid,\n    message: aiResponse\n  }\n}];"
+      },
+      "id": "prepare-response-id",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://YOUR_DROPLET_IP:8000/whatsapp/send-message",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParametersJson": "={{ JSON.stringify($json) }}"
+      },
+      "id": "send-ai-response-id",
+      "name": "Send AI Response",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Message Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Message": {
+      "main": [
+        [
+          {
+            "node": "Get Chat Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Chat Context": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Send AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-01-24T12:00:00.000Z",
+  "updatedAt": "2025-01-24T12:00:00.000Z",
+  "settings": {},
+  "staticData": null,
+  "meta": {},
+  "id": "whatsapp-ai-assistant"
+}

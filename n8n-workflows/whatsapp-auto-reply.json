@@ -1,0 +1,71 @@
+{
+  "name": "WhatsApp Message Monitor & Auto-Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp-webhook",
+        "options": {}
+      },
+      "id": "1a2b3c4d-5e6f-7890-abcd-ef1234567890",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract message data from webhook\nconst messageData = items[0].json;\nconst message = messageData.content || '';\nconst chatJid = messageData.chat_jid;\nconst sender = messageData.sender;\nconst isFromMe = messageData.is_from_me;\n\n// Don't reply to our own messages\nif (isFromMe) {\n  return [];\n}\n\n// Simple keyword-based responses\nlet reply = '';\nconst lowerMessage = message.toLowerCase();\n\nif (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {\n  reply = 'Hello! How can I help you today?';\n} else if (lowerMessage.includes('help')) {\n  reply = 'I can help you with:\\n- Product information\\n- Support requests\\n- General questions\\n\\nJust type what you need!';\n} else if (lowerMessage.includes('price') || lowerMessage.includes('cost')) {\n  reply = 'For pricing information, please visit our website or contact our sales team.';\n} else if (lowerMessage.includes('support')) {\n  reply = 'I\\'ll connect you with our support team. Please describe your issue and we\\'ll get back to you soon.';\n} else {\n  reply = 'Thanks for your message! A team member will respond shortly.';\n}\n\nreturn [{\n  json: {\n    chat_jid: chatJid,\n    message: reply,\n    original_message: message,\n    sender: sender\n  }\n}];"
+      },
+      "id": "2b3c4d5e-6f78-9012-bcde-f23456789012",
+      "name": "Process Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://YOUR_DROPLET_IP:8000/whatsapp/send-message",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParametersJson": "={{ JSON.stringify({\"chat_jid\": $json.chat_jid, \"message\": $json.message}) }}"
+      },
+      "id": "3c4d5e6f-7890-1234-cdef-345678901234",
+      "name": "Send Auto-Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Message": {
+      "main": [
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-01-24T12:00:00.000Z",
+  "updatedAt": "2025-01-24T12:00:00.000Z",
+  "settings": {},
+  "staticData": null,
+  "meta": {},
+  "id": "whatsapp-auto-reply"
+}

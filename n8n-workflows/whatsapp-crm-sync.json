@@ -1,0 +1,102 @@
+{
+  "name": "WhatsApp Contact Sync & CRM Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-node-id",
+      "name": "Schedule Every 6 Hours",
+      "type": "n8n-nodes-base.schedule",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://YOUR_DROPLET_IP:8000/whatsapp/contacts",
+        "qs": {
+          "query": ""
+        }
+      },
+      "id": "get-contacts-id",
+      "name": "Get WhatsApp Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process contacts and prepare for CRM sync\nconst contacts = items[0].json.data || [];\nconst processedContacts = [];\n\nfor (const contact of contacts) {\n  // Extract useful information\n  const processedContact = {\n    name: contact.name || contact.phone_number,\n    phone: contact.phone_number,\n    whatsapp_jid: contact.jid,\n    last_seen: contact.last_seen,\n    profile_picture: contact.profile_picture_url,\n    is_business: contact.is_business || false,\n    tags: ['whatsapp-contact'],\n    source: 'whatsapp-mcp'\n  };\n  \n  processedContacts.push({ json: processedContact });\n}\n\nreturn processedContacts;"
+      },
+      "id": "process-contacts-id",
+      "name": "Process Contacts",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://your-crm-api.com/contacts",
+        "authentication": "headerAuth",
+        "options": {
+          "bodyContentType": "json"
+        },
+        "bodyParametersJson": "={{ JSON.stringify($json) }}"
+      },
+      "id": "sync-crm-id",
+      "name": "Sync to CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get WhatsApp Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get WhatsApp Contacts": {
+      "main": [
+        [
+          {
+            "node": "Process Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Contacts": {
+      "main": [
+        [
+          {
+            "node": "Sync to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-01-24T12:00:00.000Z",
+  "updatedAt": "2025-01-24T12:00:00.000Z",
+  "settings": {},
+  "staticData": null,
+  "meta": {},
+  "id": "whatsapp-crm-sync"
+}

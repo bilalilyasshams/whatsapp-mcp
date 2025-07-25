@@ -1,11 +1,14 @@
 [project]
 name = "whatsapp-mcp-server"
 version = "0.1.0"
-description = "Add your description here"
+description = "WhatsApp MCP Server with HTTP API for n8n integration"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.6.0",
     "requests>=2.32.3",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
 ]
